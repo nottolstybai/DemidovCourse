@@ -1,6 +1,9 @@
+from datetime import datetime, timedelta
 from secrets import token_urlsafe
+from typing import Type
 
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+import jwt
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Header
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -9,7 +12,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from db.model import Base, User
-
 
 app = FastAPI()
 auth = HTTPBasic()
@@ -23,7 +25,34 @@ templates = Jinja2Templates(directory="templates")
 Base.metadata.create_all(engine)
 
 
-# Define a helper function to verify the user credentials
+def create_jwt_token(user_id: int):
+    payload = {
+        "sub": user_id,
+        "exp": datetime.utcnow() + timedelta(days=1)
+    }
+    token = jwt.encode(payload, "secret", algorithm="HS256")
+    return token
+
+
+def verify_jwt_token(token: str):
+    try:
+        payload = jwt.decode(token, "secret", algorithms=["HS256"])
+        user_id = payload["sub"]
+        return user_id
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
 def verify_user(credentials: HTTPBasicCredentials = Depends(auth)):
     session = Session()
     user = session.query(User).filter_by(username=credentials.username).first()
@@ -36,9 +65,7 @@ def verify_user(credentials: HTTPBasicCredentials = Depends(auth)):
     return user
 
 
-# Define a helper function to create a database for a user
-def create_database(user: User):
-    # Generate a random database name and password
+def create_database(user: Type[User]):
     dbname = f"db_{user.username}_{token_urlsafe(8)}"
     dbpass = token_urlsafe(16)
 
@@ -62,16 +89,6 @@ def create_database(user: User):
     return dbname, dbname, dbpass
 
 
-@app.get("/")
-def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-
-@app.get("/create_database")
-def create_database_page(request: Request):
-    return templates.TemplateResponse("create_db.html", {"request": request})
-
-
 @app.post("/register")
 def register(credentials: HTTPBasicCredentials = Depends(auth)):
     session = Session()
@@ -86,14 +103,26 @@ def register(credentials: HTTPBasicCredentials = Depends(auth)):
     return {"message": "User registered successfully"}
 
 
-# Define the endpoint to authorize under a created user
-@app.get("/authorize")
+@app.post("/authorize")
 def authorize(user: User = Depends(verify_user)):
-    return {"message": "User authorized successfully", "user_id": user.id, "username": user.username}
+    token = create_jwt_token(user.id)
+    return {"message": "User authorized successfully", "user_id": user.id, "username": user.username, "token": token}
 
 
-# Define the endpoint to create a database for a user
-@app.post("/create_database")
-def create_database_for_user(user: User = Depends(verify_user)):
+@app.get("/create_database")
+def create_database_for_user(token: str = Header(None)):
+    user_id = verify_jwt_token(token)
+    session = Session()
+    user = session.query(User).filter_by(id=user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
     dbname, dbuser, dbpass = create_database(user)
     return {"message": "Database created successfully", "database": dbname, "user": dbuser, "password": dbpass}
+
+
+@app.get("/")
+def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})

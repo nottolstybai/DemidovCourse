@@ -1,220 +1,96 @@
-<!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Simple DBaaS System</title>
-    <style>
-        /* Define some basic styles for the elements */
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
+    <title>Простой фронт</title>
+    <script>
+        function sendPostRequest(url, data, callback) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", url, true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    callback(response);
+                }
+            };
+            xhr.send(JSON.stringify(data));
         }
 
-        h1 {
-            text-align: center;
-            color: white;
-            background-color: #333;
-            margin: 0;
-            padding: 10px;
+        function sendGetRequestWithToken(url, token, callback) {
+            var data = {
+                token: token
+            };
+
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", url, true);
+            xhr.setRequestHeader("token", token);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    callback(response);
+                }
+            };
+            xhr.send(JSON.stringify(data));
         }
 
-        form {
-            width: 400px;
-            margin: 20px auto;
-            border: 1px solid #ccc;
-            padding: 20px;
-            box-shadow: 2px 2px 5px #999;
+        function registerUser() {
+            var username = document.getElementById("register-username").value;
+            var password = document.getElementById("register-password").value;
+            var data = {
+                username: username,
+                password: password
+            };
+            sendPostRequest("/register", data, function (response) {
+                alert(response.message);
+            });
         }
 
-        label {
-            display: block;
-            margin-bottom: 10px;
+        function authorizeUser() {
+            var username = document.getElementById("authorize-username").value;
+            var password = document.getElementById("authorize-password").value;
+            var data = {
+                username: username,
+                password: password
+            };
+            sendPostRequest("/authorize", data, function (response) {
+                alert(response.message);
+                localStorage.setItem("token", response.token);
+            });
         }
 
-        input {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            margin-bottom: 20px;
+        function createDatabase() {
+            var token = localStorage.getItem("token");
+            if (token) {
+                sendGetRequestWithToken("/create_database", token, function (response) {
+                    alert(response.message);
+                    alert("Database: " + response.database + "\nUser: " + response.user + "\nPassword: " + response.password);
+                });
+            } else {
+                window.location.href = "/authorize";
+            }
         }
-
-        button {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            border: none;
-            background-color: #333;
-            color: white;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #444;
-        }
-
-        p {
-            text-align: center;
-            margin: 10px 0;
-        }
-
-        a {
-            color: #333;
-            text-decoration: none;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-
-        .message {
-            color: green;
-            font-weight: bold;
-        }
-
-        .error {
-            color: red;
-            font-weight: bold;
-        }
-    </style>
+    </script>
 </head>
 <body>
-    <h1>Simple DBaaS System</h1>
-    <!-- Define a form element to get the user input -->
-    <form id="form">
-        <!-- Define a label and an input element for the username -->
-        <label for="username">Username:</label>
-        <input type="text" id="username" name="username" required>
-        <!-- Define a label and an input element for the password -->
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required>
-        <!-- Define a button element to submit the form -->
-        <button type="submit" id="submit">Submit</button>
-        <!-- Define a paragraph element to show the message or error -->
-        <p id="message"></p>
-        <!-- Define a paragraph element to show the link to switch between register and authorize -->
-        <p id="link"><a href="#" id="toggle">Register a new user</a></p>
+    <h1>Простой фронт</h1>
+    <h2>Регистрация</h2>
+    <form>
+        <label for="register-username">Имя пользователя:</label>
+        <input type="text" id="register-username" name="register-username">
+        <label for="register-password">Пароль:</label>
+        <input type="password" id="register-password" name="register-password">
+        <button type="button" onclick="registerUser()">Зарегистрироваться</button>
     </form>
-    <script>
-        // Get the form element by its id
-        const form = document.getElementById("form");
-        // Get the input elements by their ids
-        const username = document.getElementById("username");
-        const password = document.getElementById("password");
-        // Get the button element by its id
-        const submit = document.getElementById("submit");
-        // Get the paragraph elements by their ids
-        const message = document.getElementById("message");
-        const link = document.getElementById("link");
-        // Get the anchor element by its id
-        const toggle = document.getElementById("toggle");
-
-        // Define a variable to store the mode of the form
-        // The mode can be either "register" or "authorize"
-        let mode = "register";
-
-        // Define a function to switch the mode of the form
-        function switchMode() {
-            // If the mode is "register", change it to "authorize"
-            if (mode === "register") {
-                mode = "authorize";
-                // Change the text of the button and the link
-                submit.textContent = "Authorize";
-                toggle.textContent = "Register a new user";
-            } else {
-                // If the mode is "authorize", change it to "register"
-                mode = "register";
-                // Change the text of the button and the link
-                submit.textContent = "Register";
-                toggle.textContent = "Authorize under a created user";
-            }
-            // Clear the input values and the message
-            username.value = "";
-            password.value = "";
-            message.textContent = "";
-        }
-
-        // Define a function to handle the form submission
-        async function handleSubmit(event) {
-            // Prevent the default behavior of the form
-            event.preventDefault();
-            // Get the username and password values from the input elements
-            const user = username.value;
-            const pass = password.value;
-            // Check if the username and password are not empty
-            if (user && pass) {
-                // Create a new URLSearchParams object to store the credentials
-                const params = new URLSearchParams();
-                // Append the username and password to the params
-                params.append("username", user);
-                params.append("password", pass);
-                // Define the URL of the API endpoint based on the mode
-                const url = mode === "register" ? "/register" : "/authorize";
-                try {
-                    // Send a POST request to the API endpoint with the params as the body
-                    const response = await fetch(url, {
-                        method: "POST",
-                        body: params
-                    });
-                    // Parse the response as JSON
-                    const data = await response.json();
-                    // Check if the response status is 200 (OK)
-                    if (response.status === 200) {
-                        // Show the success message from the data
-                        message.textContent = data.message;
-                        message.className = "message";
-                        // If the mode is "authorize", try to create a database for the user
-                        if (mode === "authorize") {
-                            try {
-                                // Send a POST request to the /create_database endpoint with the credentials as the headers
-                                const dbResponse = await fetch("/create_database", {
-                                    method: "POST",
-                                    headers: {
-                                        "Authorization": "Basic " + btoa(user + ":" + pass)
-                                    }
-                                });
-                                // Parse the response as JSON
-                                const dbData = await dbResponse.json();
-                                // Check if the response status is 200 (OK)
-                                if (dbResponse.status === 200) {
-                                    // Show the success message and the database credentials from the dbData
-                                    message.textContent += "\n" + dbData.message;
-                                    message.textContent += "\nDatabase: " + dbData.database;
-                                    message.textContent += "\nUser: " + dbData.user;
-                                    message.textContent += "\nPassword: " + dbData.password;
-                                } else {
-                                    // If the response status is not 200, show the error message from the dbData
-                                    message.textContent = dbData.detail;
-                                    message.className = "error";
-                                }
-                            } catch (error) {
-                                // If there is an error, show the error message
-                                message.textContent = error.message;
-                                message.className = "error";
-                            }
-                        }
-                    } else {
-                        // If the response status is not 200, show the error message from the data
-                        message.textContent = data.detail;
-                        message.className = "error";
-                    }
-                } catch (error) {
-                    // If there is an error, show the error message
-                    message.textContent = error.message;
-                    message.className = "error";
-                }
-            } else {
-                // If the username or password is empty, show an error message
-                message.textContent = "Please enter a username and a password";
-                message.className = "error";
-            }
-        }
-
-        // Add an event listener to the form element to handle the submit event
-        form.addEventListener("submit", handleSubmit);
-        // Add an event listener to the toggle element to handle the click event
-        toggle.addEventListener("click", switchMode);
-    </script>
+    <h2>Авторизация</h2>
+    <form>
+        <label for="authorize-username">Имя пользователя:</label>
+        <input type="text" id="authorize-username" name="authorize-username">
+        <label for="authorize-password">Пароль:</label>
+        <input type="password" id="authorize-password" name="authorize-password">
+        <button type="button" onclick="authorizeUser()">Авторизоваться</button>
+    </form>
+    <h2>Создание базы данных</h2>
+    <form>
+        <button type="button" onclick="createDatabase()">Создать базу данных</button>
+    </form>
 </body>
 </html>
