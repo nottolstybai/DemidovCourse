@@ -17,5 +17,7 @@ sudo apt-get update
 sudo apt-get install postgresql -y
 sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD 'postgres'"
 
+export DB_HOST=localhost
+
 # activate venv
 bash -c "cd DemidovCourse && python3.10 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8080 --reload"
