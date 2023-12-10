@@ -1,13 +1,33 @@
 version: '3.4'
 
-services:
+networks:
+  dbaas_net:
+    driver: bridge
 
-  db:
-    image: postgres:14.1-alpine
-    container_name: dbaas
+services:
+  app:
+    build:
+      context: ./
+      dockerfile: main.Dockerfile
+    environment:
+      - DB_HOST=db_host
+    container_name: app
+    command: bash -c "sleep 10s  && uvicorn main:app --host 0.0.0.0 --port 8080"
+    depends_on:
+      - db_host
+    ports:
+      - '8080:8080'
+    networks:
+      - dbaas_net
+
+  db_host:
+    image: postgres:14
+    container_name: db_host
     restart: always
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     ports:
       - '5432:5432'
+    networks:
+      - dbaas_net

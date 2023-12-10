@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 from secrets import token_urlsafe
 from typing import Type
@@ -16,7 +17,8 @@ from db.model import Base, User
 app = FastAPI()
 auth = HTTPBasic()
 
-engine = create_engine("postgresql://postgres:postgres@localhost:5432/postgres")
+host = os.getenv("DB_HOST")
+engine = create_engine(f"postgresql://postgres:postgres@{host}:5432/postgres")
 Session = sessionmaker(bind=engine)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
