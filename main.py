@@ -4,11 +4,11 @@ from secrets import token_urlsafe
 from typing import Type
 
 import jwt
+import psycopg2
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Header
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from psycopg2 import connect, DatabaseError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -71,7 +71,10 @@ def create_database(user: Type[User]):
     dbname = f"db_{user.username}_{token_urlsafe(8)}"
     dbpass = token_urlsafe(16)
 
-    conn = connect("dbname=postgres user=postgres password=postgres")
+    conn = psycopg2.connect(host=host,
+                            database="postgres",
+                            user="postgres",
+                            password="postgres")
     conn.autocommit = True
     cur = conn.cursor()
 
@@ -79,7 +82,7 @@ def create_database(user: Type[User]):
         cur.execute(f"CREATE DATABASE {dbname}")
         cur.execute(f"CREATE USER {dbname} WITH PASSWORD '{dbpass}'")
         cur.execute(f"GRANT ALL PRIVILEGES ON DATABASE {dbname} TO {dbname}")
-    except DatabaseError as e:
+    except psycopg2.DatabaseError as e:
         conn.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
