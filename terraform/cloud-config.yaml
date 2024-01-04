@@ -1,0 +1,26 @@
+#cloud-config
+password: ubuntu@pass01
+cloud_init_modules:
+ - migrator
+ - seed_random
+ - write-files
+ - growpart
+ - resizefs
+ - set_hostname
+ - update_hostname
+ - update_etc_hosts
+ - users-groups
+ - ssh
+ - runcmd
+ssh_pwauth: true
+users:
+  - name: test
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    groups: sudo
+    shell: /bin/bash
+    lock_passwd: false
+chpasswd:
+  list:
+    "test:APOKAapoka1998*ADILadil2001!"
+  expire: False
+fqdn: "terraform-vm"

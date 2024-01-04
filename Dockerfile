@@ -4,15 +4,15 @@ ENV DB_HOST=localhost
 
 RUN apt-get update && apt-get install -y postgresql
 
-RUN apt-get install git -y
+COPY . /app
 
-RUN git clone https://github.com/nottolstybai/DemidovCourse.git
+WORKDIR /app
 
-WORKDIR /DemidovCourse
+RUN pip install --upgrade pip
+
+RUN pip install --upgrade setuptools
 
 RUN pip install -r requirements.txt
-
-EXPOSE 8080
 
 USER postgres
 
