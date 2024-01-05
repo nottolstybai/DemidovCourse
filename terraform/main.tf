@@ -110,7 +110,7 @@ resource "rustack_vm" "vm" {
 
   provisioner "file" {
     source      = "./docker/Dockerfile"
-    destination = "/home/test/main.Dockerfile"
+    destination = "/home/test/Dockerfile"
     connection {
       type     = "ssh"
       user     = "test"
